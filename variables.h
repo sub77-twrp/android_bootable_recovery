@@ -17,7 +17,11 @@
 #ifndef _VARIABLES_HEADER_
 #define _VARIABLES_HEADER_
 
+#ifdef TW_DEVICE_SPECIFIC_VERSION
+#define TW_VERSION_STR TW_DEVICE_SPECIFIC_VERSION
+#else
 #define TW_VERSION_STR              "3.0.2-0"
+#endif
 
 #define TW_USE_COMPRESSION_VAR      "tw_use_compression"
 #define TW_FILENAME                 "tw_filename"
