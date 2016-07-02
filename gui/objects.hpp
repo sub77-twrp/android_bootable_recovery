@@ -394,6 +394,7 @@ protected:
 	int multirom_remove_fw(std::string arg);
 	int multirom_restorecon(std::string arg);
 	int system_image_upgrader(std::string arg);
+	int multirom_restorewifi(std::string arg);
 #endif //TARGET_RECOVERY_IS_MULTIROM
 	int setlanguage(std::string arg);
 	int twcmd(std::string arg);

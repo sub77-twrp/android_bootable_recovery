@@ -157,6 +157,7 @@ public:
 	static bool move(std::string from, std::string to);
 	static bool erase(std::string name);
 	static bool restorecon(std::string name);
+	static bool restorewifi(std::string name);
 
 	static bool flashZip(std::string rom, std::string file);
 	static bool flashORSZip(std::string file, int *wipe_cache);

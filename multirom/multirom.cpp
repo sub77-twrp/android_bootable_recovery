@@ -478,6 +478,21 @@ exit:
 	return res;
 }
 
+bool MultiROM::restorewifi(std::string name)
+{
+
+	std::string path = getRomsPath() + "/" + name;
+
+	gui_print("Restore Wifi \"%s\"...\n", name.c_str());
+	gui_print("checking path %s!\n", path.c_str());
+
+	int res = system_args("wifibackup.sh backup \"%s\"", path.c_str());
+
+	res = system_args("wifibackup.sh restore \"%s\"", path.c_str());
+	sync();
+	return res == 0;
+}
+
 bool MultiROM::initBackup(const std::string& name)
 {
 	bool hadInternalStorage = (DataManager::GetStrValue("tw_storage_path").find("/data") == 0);

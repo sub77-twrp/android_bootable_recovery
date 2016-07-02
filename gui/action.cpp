@@ -272,6 +272,7 @@ GUIAction::GUIAction(xml_node<>* node)
 		ADD_ACTION(multirom_remove_fw);
 		ADD_ACTION(multirom_restorecon);
 		ADD_ACTION(system_image_upgrader);
+		ADD_ACTION(multirom_restorewifi);
 #endif //TARGET_RECOVERY_IS_MULTIROM
 		ADD_ACTION(twcmd);
 	}
@@ -2647,6 +2648,15 @@ int GUIAction::system_image_upgrader(std::string arg)
 
 	return 0;
 }
+
+int GUIAction::multirom_restorewifi(std::string arg)
+{
+	operation_start("restorewifi");
+	int res = MultiROM::restorewifi(DataManager::GetStrValue("tw_multirom_rom_name")) ? 0 : -1;
+	operation_end(res);
+	return 0;
+}
+
 #endif //TARGET_RECOVERY_IS_MULTIROM
 
 int GUIAction::mountsystemtoggle(std::string arg)
