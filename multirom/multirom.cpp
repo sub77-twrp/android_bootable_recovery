@@ -1136,6 +1136,8 @@ bool MultiROM::flashZip(std::string rom, std::string file)
 		gui_print("Failed to install ZIP!\n");
 	else
 		gui_print("ZIP successfully installed\n");
+		if(DataManager::GetIntValue("tw_restore_wifi") == 1)
+		gui_print("ZIP/Wifi successfully installed\n");
 
 	if((hacker.getProcessFlags() & EDIFY_BLOCK_UPDATES) && system_args("busybox umount -d /tmpsystem") != 0)
 		system_args("dev=\"$(losetup | grep 'system\\.img' | grep -o '/.*:')\"; losetup -d \"${dev%%:}\"");
