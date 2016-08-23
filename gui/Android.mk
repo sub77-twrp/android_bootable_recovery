@@ -86,8 +86,6 @@ LOCAL_MODULE := twrp
 LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
 LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)
-TWRP_RES := $(commands_recovery_local_path)/gui/devices/common/res/*
-TWRP_NEW_THEME := true
 
 ifeq ($(TW_CUSTOM_THEME),)
     ifeq ($(TW_THEME),)
@@ -114,39 +112,20 @@ ifeq ($(TW_CUSTOM_THEME),)
         endif
     endif
 
-    ifeq ($(TWRP_NEW_THEME),true)
-        TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/theme/$(TW_THEME)
-        TWRP_RES := $(commands_recovery_local_path)/gui/theme/common/fonts
-        TWRP_RES += $(commands_recovery_local_path)/gui/theme/common/languages
-        TWRP_RES += $(commands_recovery_local_path)/gui/theme/common/$(word 1,$(subst _, ,$(TW_THEME))).xml
-        TWRP_CURTAIN_LOC := $(commands_recovery_local_path)/gui/theme/alt-images/curtain/$(TW_THEME)
-        # for future copying of used include xmls and fonts:
-        # UI_XML := $(TWRP_THEME_LOC)/ui.xml
-        # TWRP_INCLUDE_XMLS := $(shell xmllint --xpath '/recovery/include/xmlfile/@name' $(UI_XML)|sed -n 's/[^\"]*\"\([^\"]*\)\"[^\"]*/\1\n/gp'|sort|uniq)
-        # TWRP_FONTS_TTF := $(shell xmllint --xpath '/recovery/resources/font/@filename' $(UI_XML)|sed -n 's/[^\"]*\"\([^\"]*\)\"[^\"]*/\1\n/gp'|sort|uniq)niq)
-        ifeq ($(wildcard $(TWRP_THEME_LOC)/ui.xml),)
-            $(error ERROR: TW_THEME '$(TW_THEME)' is not one of $(sort $(notdir $(wildcard $(commands_recovery_local_path)/gui/theme/*_*))))
-        endif
-    else
-        TWRP_RES += $(commands_recovery_local_path)/gui/devices/$(word 1,$(subst _, ,$(TW_THEME)))/res/*
-        ifeq ($(TW_THEME), portrait_mdpi)
-            TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/devices/480x800/res
-            TWRP_CURTAIN_LOC := $(commands_recovery_local_path)/gui/devices/alt-images/curtain/480x800
-        else ifeq ($(TW_THEME), portrait_hdpi)
-            TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/devices/1080x1920/res
-            TWRP_CURTAIN_LOC := $(commands_recovery_local_path)/gui/devices/alt-images/curtain/1080x1920
-        else ifeq ($(TW_THEME), watch_mdpi)
-            TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/devices/320x320/res
-            TWRP_CURTAIN_LOC := $(commands_recovery_local_path)/gui/devices/alt-images/curtain/320x320
-        else ifeq ($(TW_THEME), landscape_mdpi)
-            TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/devices/800x480/res
-            TWRP_CURTAIN_LOC := $(commands_recovery_local_path)/gui/devices/alt-images/curtain/800x480
-        else ifeq ($(TW_THEME), landscape_hdpi)
-            TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/devices/1920x1200/res
-            TWRP_CURTAIN_LOC := $(commands_recovery_local_path)/gui/devices/alt-images/curtain/1920x1200
-        else
-            $(error ERROR: TW_THEME '$(TW_THEME)' is not one of landscape_hdpi landscape_mdpi portrait_hdpi portrait_mdpi watch_mdpi)
-        endif
+    TWRP_THEME_LOC := $(commands_recovery_local_path)/gui/theme/$(TW_THEME)
+    TWRP_RES := $(commands_recovery_local_path)/gui/theme/common/fonts
+    TWRP_RES += $(commands_recovery_local_path)/gui/theme/common/languages
+    TWRP_RES += $(commands_recovery_local_path)/gui/theme/common/$(word 1,$(subst _, ,$(TW_THEME))).xml
+    ifeq ($(TW_EXTRA_LANGUAGES),true)
+        TWRP_RES += $(commands_recovery_local_path)/gui/theme/extra-languages/fonts
+        TWRP_RES += $(commands_recovery_local_path)/gui/theme/extra-languages/languages
+    endif
+    # for future copying of used include xmls and fonts:
+    # UI_XML := $(TWRP_THEME_LOC)/ui.xml
+    # TWRP_INCLUDE_XMLS := $(shell xmllint --xpath '/recovery/include/xmlfile/@name' $(UI_XML)|sed -n 's/[^\"]*\"\([^\"]*\)\"[^\"]*/\1\n/gp'|sort|uniq)
+    # TWRP_FONTS_TTF := $(shell xmllint --xpath '/recovery/resources/font/@filename' $(UI_XML)|sed -n 's/[^\"]*\"\([^\"]*\)\"[^\"]*/\1\n/gp'|sort|uniq)niq)
+    ifeq ($(wildcard $(TWRP_THEME_LOC)/ui.xml),)
+        $(error ERROR: TW_THEME '$(TW_THEME)' is not one of $(sort $(notdir $(wildcard $(commands_recovery_local_path)/gui/theme/*_*))))
     endif
 else
     TWRP_THEME_LOC := $(TW_CUSTOM_THEME)
