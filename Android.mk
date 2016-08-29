@@ -329,6 +329,7 @@ LOCAL_ADDITIONAL_DEPENDENCIES := \
     flash_image \
     mke2fs.conf \
     pigz \
+    pigz_symlinks \
     teamwin \
     toolbox_symlinks \
     twrp \
@@ -487,6 +488,15 @@ endif
 include $(BUILD_PHONY_PACKAGE)
 RECOVERY_BUSYBOX_SYMLINKS :=
 endif # !TW_USE_TOOLBOX
+
+# Symlinks for pigz utilities
+include $(CLEAR_VARS)
+PIGZ_UTILITIES := gzip gunzip unpigz
+
+pigz_symlinks:
+	@mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/sbin
+	@echo -e ${CL_CYN}"Generate pigz links:"${CL_RST} $(PIGZ_UTILITIES)
+	$(hide) $(foreach t,$(PIGZ_UTILITIES),ln -sf pigz $(TARGET_RECOVERY_ROOT_OUT)/sbin/$(t);)
 
 # All the APIs for testing
 include $(CLEAR_VARS)
