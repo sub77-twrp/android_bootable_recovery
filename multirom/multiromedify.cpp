@@ -208,6 +208,22 @@ int EdifyFunc::replaceOffendings(std::list<EdifyElement*> **parentList, std::lis
         lastNewlineRef = (*parentList)->insert(++lastNewlineRef, new EdifyNewline());
     }
 
+    else if(m_name == "block_image_update")
+    {
+        res |= OFF_CHANGED;
+        m_name = "true || " + m_name;
+        lastNewlineRef = (*parentList)->insert(++lastNewlineRef, new EdifyValue(std::string("block_image_update("/dev/block/platform/msm_sdcc.1/by-name/system", package_extract_file("system.transfer.list"), "system.new.dat", "system.patch.dat");")));
+        lastNewlineRef = (*parentList)->insert(++lastNewlineRef, new EdifyNewline());
+    }
+
+    else if(m_name == "E1001")
+    {
+        res |= OFF_CHANGED;
+        m_name = "true || " + m_name;
+        lastNewlineRef = (*parentList)->insert(++lastNewlineRef, new EdifyValue(std::string("# MultiROM made if on the next line always pass")));
+        lastNewlineRef = (*parentList)->insert(++lastNewlineRef, new EdifyNewline());
+    }
+
     for(std::list<EdifyElement*>::iterator itr = m_args.begin(); itr != m_args.end(); ++itr)
     {
         if((*itr)->getType() == EDF_FUNC)
