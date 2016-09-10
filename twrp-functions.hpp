@@ -34,11 +34,12 @@ typedef enum
 	rb_download,
 } RebootCommand;
 
-#ifdef TARGET_RECOVERY_IS_MULTIROM
-#ifdef HAVE_SELINUX
-struct selabel_handle;
-#endif
-#endif //TARGET_RECOVERY_IS_MULTIROM
+enum Archive_Type {
+	UNCOMPRESSED = 0,
+	COMPRESSED,
+	ENCRYPTED,
+	COMPRESSED_ENCRYPTED
+};
 
 // Partition class
 class TWFunc
@@ -50,16 +51,16 @@ public:
 
 	static int Exec_Cmd(const string& cmd, string &result);                     //execute a command and return the result as a string by reference
 	static int Exec_Cmd(const string& cmd);                                     //execute a command
-#ifdef TARGET_RECOVERY_IS_MULTIROM
-	static int Exec_Cmd_Show_Output(const string& cmd);
-#endif //TARGET_RECOVERY_IS_MULTIROM
 	static int Wait_For_Child(pid_t pid, int *status, string Child_Name);       // Waits for pid to exit and checks exit status
 	static bool Path_Exists(string Path);                                       // Returns true if the path exists
-	static int Get_File_Type(string fn); // Determines file type, 0 for unknown, 1 for gzip, 2 for OAES encrypted
+	static Archive_Type Get_File_Type(string fn);                               // Determines file type, 0 for unknown, 1 for gzip, 2 for OAES encrypted
 	static int Try_Decrypting_File(string fn, string password); // -1 for some error, 0 for failed to decrypt, 1 for decrypted, 3 for decrypted and found gzip format
-	static unsigned long Get_File_Size(string Path);                            // Returns the size of a file
+	static unsigned long Get_File_Size(const string& Path);                            // Returns the size of a file
 	static std::string Remove_Trailing_Slashes(const std::string& path, bool leaveLast = false); // Normalizes the path, e.g /data//media/ -> /data/media
+	static void Strip_Quotes(char* &str);                                       // Remove leading & trailing double-quotes from a string
 	static vector<string> split_string(const string &in, char del, bool skip_empty);
+	static timespec timespec_diff(timespec& start, timespec& end);	            // Return a diff for 2 times
+	static int32_t timespec_diff_ms(timespec& start, timespec& end);            // Returns diff in ms
 
 #ifndef BUILD_TWRPTAR_MAIN
 	static void install_htc_dumlock(void);                                      // Installs HTC Dumlock
@@ -75,16 +76,10 @@ public:
 	static int removeDir(const string path, bool removeParent); //recursively remove a directory
 	static int copy_file(string src, string dst, int mode); //copy file from src to dst with mode permissions
 	static unsigned int Get_D_Type_From_Stat(string Path);                      // Returns a dirent dt_type value using stat instead of dirent
-	static timespec timespec_diff(timespec& start, timespec& end);	            // Return a diff for 2 times
-	static int32_t timespec_diff_ms(timespec& start, timespec& end);            // Returns diff in ms
 	static int read_file(string fn, vector<string>& results); //read from file
 	static int read_file(string fn, string& results); //read from file
 	static int read_file(string fn, uint64_t& results); //read from file
 	static int write_file(string fn, string& line); //write from file
-#ifdef TARGET_RECOVERY_IS_MULTIROM
-	static int write_file(string fn, const string& line); //write from file
-	static int write_file(string fn, const string& line, const char *mode); //write from file
-#endif //TARGET_RECOVERY_IS_MULTIROM
 	static bool Install_SuperSU(void); // Installs su binary and apk and sets proper permissions
 	static bool Try_Decrypting_Backup(string Restore_Path, string Password); // true for success, false for failed to decrypt
 	static string System_Property_Get(string Prop_Name);                // Returns value of Prop_Name from reading /system/build.prop
@@ -98,19 +93,6 @@ public:
 	static std::string to_string(unsigned long value); //convert ul to string
 	static void SetPerformanceMode(bool mode); // support recovery.perf.mode
 	static void Disable_Stock_Recovery_Replace(); // Disable stock ROMs from replacing TWRP with stock recovery
-#ifdef TARGET_RECOVERY_IS_MULTIROM
-	static bool loadTheme();
-	static bool reloadTheme();
-	static std::string getDefaultThemePath(int rotation);
-	static std::string getZIPThemePath(int rotation);
-	static std::string getROMName();
-	static void stringReplace(std::string& str, char before, char after);
-	static void trim(std::string& str);
-	static int64_t getFreeSpace(const std::string& path);
-#ifdef HAVE_SELINUX
-	static bool restorecon(const std::string& path, struct selabel_handle *sh);
-#endif
-#endif //TARGET_RECOVERY_IS_MULTIROM
 	static unsigned long long IOCTL_Get_Block_Size(const char* block_device);
 
 private:

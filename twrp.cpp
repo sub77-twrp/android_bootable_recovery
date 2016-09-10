@@ -24,9 +24,7 @@
 #include "gui/twmsg.h"
 
 #include "cutils/properties.h"
-extern "C" {
 #include "bootloader.h"
-}
 
 #ifdef ANDROID_RB_RESTART
 #include "cutils/android_reboot.h"
@@ -36,8 +34,8 @@ extern "C" {
 
 extern "C" {
 #include "gui/gui.h"
-#include "set_metadata.h"
 }
+#include "set_metadata.h"
 #include "gui/gui.hpp"
 #include "gui/pages.hpp"
 #include "gui/objects.hpp"
@@ -64,6 +62,8 @@ struct selabel_handle *selinux_handle;
 #ifdef TARGET_RECOVERY_IS_MULTIROM
 #include "multirom/multirom.h"
 #endif //TARGET_RECOVERY_IS_MULTIROM
+
+extern int adb_server_main(int is_daemon, int server_port, int /* reply_fd */);
 
 TWPartitionManager PartitionManager;
 int Log_Offset;
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
 	if (argc == 3 && strcmp(argv[1], "--adbd") == 0) {
 		property_set("ctl.stop", "adbd");
 #ifdef TW_USE_NEW_MINADBD
-		adb_main(0, DEFAULT_ADB_PORT);
+		adb_server_main(0, DEFAULT_ADB_PORT, -1);
 #else
 		adb_main(argv[2]);
 #endif
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
 	property_set("ro.twrp.version", TW_VERSION_STR);
 
 	time_t StartupTime = time(NULL);
-	printf("Starting TWRP %s on %s (pid %d)\n", TW_VERSION_STR, ctime(&StartupTime), getpid());
+	printf("Starting TWRP %s-%s on %s (pid %d)\n", TW_VERSION_STR, TW_GIT_REVISION, ctime(&StartupTime), getpid());
 
 #ifdef TARGET_RECOVERY_IS_MULTIROM
 #ifdef HAVE_SELINUX
@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
 
 	// Load default values to set DataManager constants and handle ifdefs
 	DataManager::SetDefaultValues();
-	printf("Starting the UI...");
+	printf("Starting the UI...\n");
 	gui_init();
 	printf("=> Linking mtab\n");
 	symlink("/proc/mounts", "/etc/mtab");

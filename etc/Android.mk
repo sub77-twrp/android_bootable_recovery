@@ -31,19 +31,40 @@ include $(BUILD_PREBUILT)
 
 endif
 
-ifeq ($(TARGET_USES_LOGD), true)
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 22; echo $$?),0)
+    include $(CLEAR_VARS)
+    LOCAL_MODULE := init.recovery.service.rc
+    LOCAL_MODULE_TAGS := eng
+    LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
+    LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
 
-include $(CLEAR_VARS)
-LOCAL_MODULE := init.recovery.logd.rc
-LOCAL_MODULE_TAGS := eng
-LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
+    LOCAL_SRC_FILES := init.recovery.service22.rc
+    include $(BUILD_PREBUILT)
+else
+    include $(CLEAR_VARS)
+    LOCAL_MODULE := init.recovery.service.rc
+    LOCAL_MODULE_TAGS := eng
+    LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
+    LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
 
-# Cannot send to TARGET_RECOVERY_ROOT_OUT since build system wipes init*.rc
-# during ramdisk creation and only allows init.recovery.*.rc files to be copied
-# from TARGET_ROOT_OUT thereafter
-LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
+    LOCAL_SRC_FILES := init.recovery.service21.rc
+    include $(BUILD_PREBUILT)
+endif
 
-LOCAL_SRC_FILES := $(LOCAL_MODULE)
-include $(BUILD_PREBUILT)
+ifeq ($(TWRP_INCLUDE_LOGCAT), true)
+    ifeq ($(TARGET_USES_LOGD), true)
 
+        include $(CLEAR_VARS)
+        LOCAL_MODULE := init.recovery.logd.rc
+        LOCAL_MODULE_TAGS := eng
+        LOCAL_MODULE_CLASS := RECOVERY_EXECUTABLES
+
+        # Cannot send to TARGET_RECOVERY_ROOT_OUT since build system wipes init*.rc
+        # during ramdisk creation and only allows init.recovery.*.rc files to be copied
+        # from TARGET_ROOT_OUT thereafter
+        LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
+
+        LOCAL_SRC_FILES := $(LOCAL_MODULE)
+        include $(BUILD_PREBUILT)
+    endif
 endif

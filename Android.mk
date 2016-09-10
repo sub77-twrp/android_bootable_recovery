@@ -54,19 +54,11 @@ LOCAL_SRC_FILES += \
     data.cpp \
     partition.cpp \
     partitionmanager.cpp \
+    progresstracking.cpp \
     twinstall.cpp \
     twrp-functions.cpp \
     openrecoveryscript.cpp \
     tarWrite.c
-
-#MultiROM
-ifeq ($(TARGET_RECOVERY_IS_MULTIROM), true)
-    LOCAL_SRC_FILES += \
-        multirom/multirom.cpp \
-        multirom/mrominstaller.cpp \
-        multirom/multiromedify.cpp \
-		multirom/multirom_Zip.c
-endif
 
 ifneq ($(TARGET_RECOVERY_REBOOT_SRC),)
   LOCAL_SRC_FILES += $(TARGET_RECOVERY_REBOOT_SRC)
@@ -76,14 +68,17 @@ LOCAL_MODULE := recovery
 
 #LOCAL_FORCE_STATIC_EXECUTABLE := true
 
+#ifeq ($(TARGET_USERIMAGES_USE_F2FS),true)
 #ifeq ($(HOST_OS),linux)
 #LOCAL_REQUIRED_MODULES := mkfs.f2fs
+#endif
 #endif
 
 RECOVERY_API_VERSION := 3
 RECOVERY_FSTAB_VERSION := 2
 LOCAL_CFLAGS += -DRECOVERY_API_VERSION=$(RECOVERY_API_VERSION)
 LOCAL_CFLAGS += -Wno-unused-parameter
+LOCAL_CLANG := true
 
 #LOCAL_STATIC_LIBRARIES := \
 #    libext4_utils_static \
@@ -108,9 +103,10 @@ LOCAL_C_INCLUDES += \
     system/vold \
     system/extras/ext4_utils \
     system/core/adb \
-    system/core/libsparse
+    system/core/libsparse \
+    external/zlib
 
-LOCAL_C_INCLUDES += bionic external/openssl/include $(LOCAL_PATH)/libmincrypt/includes
+LOCAL_C_INCLUDES += bionic external/openssl/include
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 23; echo $$?),0)
     LOCAL_C_INCLUDES += external/stlport/stlport
 endif
@@ -119,23 +115,22 @@ LOCAL_STATIC_LIBRARIES :=
 LOCAL_SHARED_LIBRARIES :=
 
 LOCAL_STATIC_LIBRARIES += libguitwrp
-LOCAL_SHARED_LIBRARIES += libz libc libcutils libstdc++ libtar libblkid libminuitwrp libminadbd libmtdutils libminzip libaosprecovery
+LOCAL_SHARED_LIBRARIES += libaosprecovery libz libc libcutils libstdc++ libtar libblkid libminuitwrp libminadbd libmtdutils libminzip libtwadbbu
 LOCAL_SHARED_LIBRARIES += libcrecovery
-
-#MultiROM
-ifeq ($(TARGET_RECOVERY_IS_MULTIROM), true)
-    LOCAL_STATIC_LIBRARIES += libcp_xattrs
-
-    # clone libbootimg to /system/extras/ from
-    # https://github.com/Tasssadar/libbootimg.git
-    LOCAL_STATIC_LIBRARIES += libbootimg
-    LOCAL_C_INCLUDES += system/extras/libbootimg/include
-endif
 
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 23; echo $$?),0)
     LOCAL_SHARED_LIBRARIES += libstlport
+endif
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 24; echo $$?),0)
+    LOCAL_SHARED_LIBRARIES += libmincrypttwrp
+    LOCAL_C_INCLUDES += $(LOCAL_PATH)/libmincrypt/includes
+    LOCAL_CFLAGS += -DUSE_OLD_VERIFIER
 else
-    LOCAL_SHARED_LIBRARIES += libc++
+    LOCAL_SHARED_LIBRARIES += libc++ libcrypto
+endif
+
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 24; echo $$?),0)
+    LOCAL_SHARED_LIBRARIES += libbase
 endif
 
 ifneq ($(wildcard system/core/libsparse/Android.mk),)
@@ -149,12 +144,13 @@ ifeq ($(TW_OEM_BUILD),true)
     TW_EXCLUDE_SUPERSU := true
     TW_EXCLUDE_MTP := true
 endif
+
 ifeq ($(TARGET_USERIMAGES_USE_EXT4), true)
     LOCAL_CFLAGS += -DUSE_EXT4
     LOCAL_C_INCLUDES += system/extras/ext4_utils
     LOCAL_SHARED_LIBRARIES += libext4_utils
     ifneq ($(wildcard external/lz4/Android.mk),)
-        #LOCAL_STATIC_LIBRARIES += liblz4-static
+        #LOCAL_STATIC_LIBRARIES += liblz4
     endif
 endif
 ifneq ($(wildcard external/libselinux/Android.mk),)
@@ -174,7 +170,7 @@ ifeq ($(TWHAVE_SELINUX), true)
         LOCAL_C_INCLUDES += system/extras/ext4_utils
         LOCAL_SHARED_LIBRARIES += libext4_utils
         ifneq ($(wildcard external/lz4/Android.mk),)
-            LOCAL_STATIC_LIBRARIES += liblz4-static
+            LOCAL_STATIC_LIBRARIES += liblz4
         endif
     endif
 endif
@@ -189,6 +185,12 @@ LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
 
 LOCAL_C_INCLUDES += system/extras/ext4_utils
 
+tw_git_revision := $(shell git -C $(LOCAL_PATH) rev-parse --short=8 HEAD 2>/dev/null)
+ifeq ($(shell git -C $(LOCAL_PATH) diff --quiet; echo $$?),1)
+    tw_git_revision := $(tw_git_revision)-dirty
+endif
+LOCAL_CFLAGS += -DTW_GIT_REVISION='"$(tw_git_revision)"'
+
 #TWRP Build Flags
 ifeq ($(TW_EXCLUDE_MTP),)
     LOCAL_SHARED_LIBRARIES += libtwrpmtp
@@ -199,24 +201,6 @@ ifneq ($(TW_NO_SCREEN_TIMEOUT),)
 endif
 ifeq ($(BOARD_HAS_NO_REAL_SDCARD), true)
     LOCAL_CFLAGS += -DBOARD_HAS_NO_REAL_SDCARD
-endif
-ifneq ($(SP1_NAME),)
-	LOCAL_CFLAGS += -DSP1_NAME=$(SP1_NAME) -DSP1_BACKUP_METHOD=$(SP1_BACKUP_METHOD) -DSP1_MOUNTABLE=$(SP1_MOUNTABLE)
-endif
-ifneq ($(SP1_DISPLAY_NAME),)
-	LOCAL_CFLAGS += -DSP1_DISPLAY_NAME=$(SP1_DISPLAY_NAME)
-endif
-ifneq ($(SP2_NAME),)
-	LOCAL_CFLAGS += -DSP2_NAME=$(SP2_NAME) -DSP2_BACKUP_METHOD=$(SP2_BACKUP_METHOD) -DSP2_MOUNTABLE=$(SP2_MOUNTABLE)
-endif
-ifneq ($(SP2_DISPLAY_NAME),)
-	LOCAL_CFLAGS += -DSP2_DISPLAY_NAME=$(SP2_DISPLAY_NAME)
-endif
-ifneq ($(SP3_NAME),)
-	LOCAL_CFLAGS += -DSP3_NAME=$(SP3_NAME) -DSP3_BACKUP_METHOD=$(SP3_BACKUP_METHOD) -DSP3_MOUNTABLE=$(SP3_MOUNTABLE)
-endif
-ifneq ($(SP3_DISPLAY_NAME),)
-	LOCAL_CFLAGS += -DSP3_DISPLAY_NAME=$(SP3_DISPLAY_NAME)
 endif
 ifneq ($(RECOVERY_SDCARD_ON_DATA),)
 	LOCAL_CFLAGS += -DRECOVERY_SDCARD_ON_DATA
@@ -358,36 +342,6 @@ else
     LOCAL_CFLAGS += -DTW_DEFAULT_LANGUAGE=en
 endif
 
-#MultiROM
-ifeq ($(TARGET_RECOVERY_IS_MULTIROM), true)
-    LOCAL_CFLAGS += -DTARGET_RECOVERY_IS_MULTIROM
-
-    LOCAL_CFLAGS += -DTARGET_DEVICE="\"$(TARGET_DEVICE)\""
-
-#TODO
-LOCAL_CFLAGS += -DTW_DEFAULT_ROTATION=0
-
-    ifneq ($(MR_RD_ADDR),)
-        LOCAL_CFLAGS += -DMR_RD_ADDR=$(MR_RD_ADDR)
-    endif
-
-    ifneq ($(BOARD_BOOTIMAGE_PARTITION_SIZE),)
-        LOCAL_CFLAGS += -DBOARD_BOOTIMAGE_PARTITION_SIZE=$(BOARD_BOOTIMAGE_PARTITION_SIZE)
-    endif
-
-    ifeq ($(MR_USE_MROM_FSTAB),true)
-        LOCAL_CFLAGS += -DMR_USE_MROM_FSTAB
-    endif
-    ifneq ($(MR_DEVICE_RECOVERY_HOOKS),)
-        ifeq ($(MR_DEVICE_RECOVERY_HOOKS_VER),)
-            $(info MR_DEVICE_RECOVERY_HOOKS is set but MR_DEVICE_RECOVERY_HOOKS_VER is not specified!)
-        else
-            LOCAL_CFLAGS += -DMR_DEVICE_RECOVERY_HOOKS=$(MR_DEVICE_RECOVERY_HOOKS_VER)
-            LOCAL_SRC_FILES += ../../$(MR_DEVICE_RECOVERY_HOOKS)
-        endif
-    endif
-endif
-
 LOCAL_ADDITIONAL_DEPENDENCIES := \
     dump_image \
     erase_image \
@@ -402,22 +356,8 @@ LOCAL_ADDITIONAL_DEPENDENCIES := \
     fatlabel \
     mkfs.fat \
     permissive.sh \
-    simg2img_twrp
-
-#MultiROM
-ifeq ($(TARGET_RECOVERY_IS_MULTIROM), true)
-    #LOCAL_C_INCLUDES += $(LOCAL_PATH)/multirom
-
-    #MultiROM additions
-    LOCAL_ADDITIONAL_DEPENDENCIES += \
-        zip \
-        gnutar \
-        lz4 \
-        ntfs-3g \
-        cp_xattrs \
-        ls_xattrs \
-        mount_shim.sh
-endif
+    simg2img_twrp \
+    init.recovery.service.rc
 
 ifneq ($(TARGET_ARCH), arm64)
     ifneq ($(TARGET_ARCH), x86_64)
@@ -443,6 +383,9 @@ else
 endif
 ifneq ($(TW_NO_EXFAT), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += mkexfatfs fsckexfat
+    ifneq ($(TW_NO_EXFAT_FUSE), true)
+        LOCAL_ADDITIONAL_DEPENDENCIES += exfat-fuse
+    endif
 endif
 ifeq ($(BOARD_HAS_NO_REAL_SDCARD),)
     ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
@@ -452,7 +395,7 @@ ifeq ($(BOARD_HAS_NO_REAL_SDCARD),)
     endif
 endif
 ifneq ($(TW_EXCLUDE_ENCRYPTED_BACKUPS), true)
-    LOCAL_ADDITIONAL_DEPENDENCIES += openaes ../openaes/LICENSE
+    LOCAL_ADDITIONAL_DEPENDENCIES += openaes openaes_license
 endif
 ifeq ($(TW_INCLUDE_DUMLOCK), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += \
@@ -471,9 +414,6 @@ ifneq ($(TW_EXCLUDE_SUPERSU), true)
             libsupol.soarm64 suarm64 supolicyarm64
     endif
 endif
-ifneq ($(TW_NO_EXFAT_FUSE), true)
-    LOCAL_ADDITIONAL_DEPENDENCIES += exfat-fuse
-endif
 ifeq ($(TW_INCLUDE_FB2PNG), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += fb2png
 endif
@@ -489,11 +429,11 @@ endif
 ifneq ($(TW_EXCLUDE_DEFAULT_USB_INIT), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += init.recovery.usb.rc
 endif
-ifeq ($(TARGET_USES_LOGD), true)
-    LOCAL_ADDITIONAL_DEPENDENCIES += logd libsysutils libnl init.recovery.logd.rc
-endif
 ifeq ($(TWRP_INCLUDE_LOGCAT), true)
     LOCAL_ADDITIONAL_DEPENDENCIES += logcat
+    ifeq ($(TARGET_USES_LOGD), true)
+        LOCAL_ADDITIONAL_DEPENDENCIES += logd libsysutils libnl init.recovery.logd.rc
+    endif
 endif
 # Allow devices to specify device-specific recovery dependencies
 ifneq ($(TARGET_RECOVERY_DEVICE_MODULES),)
@@ -502,7 +442,7 @@ endif
 LOCAL_CFLAGS += -DTWRES=\"$(TWRES_PATH)\"
 LOCAL_CFLAGS += -DTWHTCD_PATH=\"$(TWHTCD_PATH)\"
 ifeq ($(TW_INCLUDE_NTFS_3G),true)
-ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 4; echo $$?),0)
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
     LOCAL_ADDITIONAL_DEPENDENCIES += \
         mount.ntfs \
         fsck.ntfs \
@@ -522,6 +462,10 @@ ifeq ($(shell test $(CM_PLATFORM_SDK_VERSION) -ge 3; echo $$?),0)
 endif
 endif
 
+ifeq ($(BOARD_CACHEIMAGE_PARTITION_SIZE),)
+LOCAL_REQUIRED_MODULES := recovery-persist recovery-refresh
+endif
+
 include $(BUILD_EXECUTABLE)
 
 ifneq ($(TW_USE_TOOLBOX), true)
@@ -530,11 +474,14 @@ include $(CLEAR_VARS)
 BUSYBOX_LINKS := $(shell cat external/busybox/busybox-full.links)
 exclude := tune2fs mke2fs mkdosfs mkfs.vfat gzip gunzip
 
-#MultiROM uses restorecon -D which is only available in toolbox
-ifeq ($(TARGET_RECOVERY_IS_MULTIROM), true)
-	ifeq ($(TWHAVE_SELINUX), true)
-		exclude += restorecon
-	endif
+# Having /sbin/modprobe present on 32 bit devices with can cause a massive
+# performance problem if the kernel has CONFIG_MODULES=y
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -gt 22; echo $$?),0)
+    ifneq ($(TARGET_ARCH), arm64)
+        ifneq ($(TARGET_ARCH), x86_64)
+            exclude += modprobe
+        endif
+    endif
 endif
 
 # If busybox does not have restorecon, assume it does not have SELinux support.
@@ -565,56 +512,74 @@ include $(BUILD_PHONY_PACKAGE)
 RECOVERY_BUSYBOX_SYMLINKS :=
 endif # !TW_USE_TOOLBOX
 
-# All the APIs for testing
-include $(CLEAR_VARS)
-LOCAL_MODULE := libverifier
-LOCAL_MODULE_TAGS := tests
-LOCAL_SRC_FILES := \
-    asn1_decoder.cpp
-include $(BUILD_STATIC_LIBRARY)
+# recovery-persist (system partition dynamic executable run after /data mounts)
+# ===============================
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 24; echo $$?),0)
+    include $(CLEAR_VARS)
+    LOCAL_SRC_FILES := recovery-persist.cpp
+    LOCAL_MODULE := recovery-persist
+    LOCAL_SHARED_LIBRARIES := liblog libbase
+    LOCAL_CFLAGS := -Werror
+    LOCAL_INIT_RC := recovery-persist.rc
+    include $(BUILD_EXECUTABLE)
+endif
 
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES := fuse_sideload.c
+# recovery-refresh (system partition dynamic executable run at init)
+# ===============================
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 24; echo $$?),0)
+    include $(CLEAR_VARS)
+    LOCAL_SRC_FILES := recovery-refresh.cpp
+    LOCAL_MODULE := recovery-refresh
+    LOCAL_SHARED_LIBRARIES := liblog
+    LOCAL_CFLAGS := -Werror
+    LOCAL_INIT_RC := recovery-refresh.rc
+    include $(BUILD_EXECUTABLE)
+endif
 
+# shared libfusesideload
+# ===============================
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := fuse_sideload.cpp
+LOCAL_CLANG := true
 LOCAL_CFLAGS := -O2 -g -DADB_HOST=0 -Wall -Wno-unused-parameter
 LOCAL_CFLAGS += -D_XOPEN_SOURCE -D_GNU_SOURCE
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libfusesideload
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/libmincrypt/includes
-LOCAL_SHARED_LIBRARIES := libcutils libc libmincrypttwrp
+LOCAL_SHARED_LIBRARIES := libcutils libc
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 23; echo $$?),0)
+    LOCAL_C_INCLUDES := $(LOCAL_PATH)/libmincrypt/includes
+    LOCAL_SHARED_LIBRARIES += libmincrypttwrp
+    LOCAL_CFLAGS += -DUSE_MINCRYPT
+else
+    LOCAL_SHARED_LIBRARIES += libcrypto
+endif
 include $(BUILD_SHARED_LIBRARY)
 
-include $(CLEAR_VARS)
-LOCAL_MODULE := verifier_test
-LOCAL_FORCE_STATIC_EXECUTABLE := true
-LOCAL_MODULE_TAGS := tests
-
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/libmincrypt/includes
-
-LOCAL_CFLAGS += -DNO_RECOVERY_MOUNT
-LOCAL_CFLAGS += -Wno-unused-parameter
-
-LOCAL_SRC_FILES := \
-    verifier_test.cpp \
-    asn1_decoder.cpp \
-    verifier.cpp \
-    ui.cpp
-LOCAL_STATIC_LIBRARIES := \
-    libmincrypttwrp \
-    libminui \
-    libminzip \
-    libcutils \
-    libstdc++ \
-    libc
-include $(BUILD_EXECUTABLE)
-
+# shared libaosprecovery for Apache code
+# ===============================
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libaosprecovery
 LOCAL_MODULE_TAGS := eng optional
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/libmincrypt/includes
-LOCAL_SRC_FILES := adb_install.cpp asn1_decoder.cpp bootloader.cpp legacy_property_service.c verifier.cpp set_metadata.c tw_atomic.cpp
-LOCAL_SHARED_LIBRARIES += libc liblog libcutils libmtdutils libfusesideload libmincrypttwrp libselinux
+LOCAL_CFLAGS := -std=gnu++0x
+LOCAL_SRC_FILES := adb_install.cpp asn1_decoder.cpp bootloader.cpp legacy_property_service.cpp set_metadata.cpp tw_atomic.cpp
+LOCAL_SHARED_LIBRARIES += libc liblog libcutils libmtdutils libfusesideload libselinux
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 23; echo $$?),0)
+    LOCAL_SHARED_LIBRARIES += libstdc++ libstlport
+    LOCAL_C_INCLUDES := bionic external/stlport/stlport
+else
+    LOCAL_SHARED_LIBRARIES += libc++
+endif
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 24; echo $$?),0)
+    LOCAL_SHARED_LIBRARIES += libmincrypttwrp
+    LOCAL_C_INCLUDES := $(LOCAL_PATH)/libmincrypt/includes
+    LOCAL_SRC_FILES += verifier24/verifier.cpp
+    LOCAL_CFLAGS += -DUSE_OLD_VERIFIER
+else
+    LOCAL_SHARED_LIBRARIES += libcrypto
+    LOCAL_SRC_FILES += verifier.cpp
+endif
 
 ifneq ($(BOARD_RECOVERY_BLDRMSG_OFFSET),)
     LOCAL_CFLAGS += -DBOARD_RECOVERY_BLDRMSG_OFFSET=$(BOARD_RECOVERY_BLDRMSG_OFFSET)
@@ -622,11 +587,25 @@ endif
 
 include $(BUILD_SHARED_LIBRARY)
 
+# All the APIs for testing
+include $(CLEAR_VARS)
+LOCAL_CLANG := true
+LOCAL_MODULE := libverifier
+LOCAL_MODULE_TAGS := tests
+LOCAL_SRC_FILES := \
+    asn1_decoder.cpp \
+    verifier.cpp \
+    ui.cpp
+LOCAL_STATIC_LIBRARIES := libcrypto
+include $(BUILD_STATIC_LIBRARY)
+
 commands_recovery_local_path := $(LOCAL_PATH)
 include $(LOCAL_PATH)/tests/Android.mk \
     $(LOCAL_PATH)/tools/Android.mk \
     $(LOCAL_PATH)/edify/Android.mk \
+    $(LOCAL_PATH)/otafault/Android.mk \
     $(LOCAL_PATH)/updater/Android.mk \
+    $(LOCAL_PATH)/update_verifier/Android.mk \
     $(LOCAL_PATH)/applypatch/Android.mk
 
 ifeq ($(wildcard system/core/uncrypt/Android.mk),)
@@ -658,7 +637,6 @@ include $(commands_recovery_local_path)/injecttwrp/Android.mk \
     $(commands_recovery_local_path)/minuitwrp/Android.mk \
     $(commands_recovery_local_path)/openaes/Android.mk \
     $(commands_recovery_local_path)/toolbox/Android.mk \
-    $(commands_recovery_local_path)/libmincrypt/Android.mk \
     $(commands_recovery_local_path)/twrpTarMain/Android.mk \
     $(commands_recovery_local_path)/mtp/Android.mk \
     $(commands_recovery_local_path)/minzip/Android.mk \
@@ -666,13 +644,11 @@ include $(commands_recovery_local_path)/injecttwrp/Android.mk \
     $(commands_recovery_local_path)/etc/Android.mk \
     $(commands_recovery_local_path)/toybox/Android.mk \
     $(commands_recovery_local_path)/simg2img/Android.mk \
+    $(commands_recovery_local_path)/adbbu/Android.mk \
     $(commands_recovery_local_path)/libpixelflinger/Android.mk
 
-#MultiROM
-ifeq ($(TARGET_RECOVERY_IS_MULTIROM), true)
-    include $(commands_recovery_local_path)/multirom/prebuilt/Android.mk \
-            $(commands_recovery_local_path)/multirom/cp_xattrs/Android.mk \
-            $(commands_recovery_local_path)/multirom/phablet/Android.mk
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -lt 24; echo $$?),0)
+    include $(commands_recovery_local_path)/libmincrypt/Android.mk
 endif
 
 ifeq ($(TW_INCLUDE_CRYPTO), true)
@@ -688,9 +664,9 @@ ifneq ($(TW_NO_EXFAT), true)
             $(commands_recovery_local_path)/exfat/fsck/Android.mk \
             $(commands_recovery_local_path)/fuse/Android.mk \
             $(commands_recovery_local_path)/exfat/libexfat/Android.mk
-endif
-ifneq ($(TW_NO_EXFAT_FUSE), true)
-    include $(commands_recovery_local_path)/exfat/fuse/Android.mk
+    ifneq ($(TW_NO_EXFAT_FUSE), true)
+        include $(commands_recovery_local_path)/exfat/fuse/Android.mk
+    endif
 endif
 ifneq ($(TW_OEM_BUILD),true)
     include $(commands_recovery_local_path)/orscmd/Android.mk

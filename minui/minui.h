@@ -51,6 +51,7 @@ void gr_text(int x, int y, const char *s, bool bold);
 void gr_texticon(int x, int y, GRSurface* icon);
 int gr_measure(const char *s);
 void gr_font_size(int *x, int *y);
+void gr_set_font(__attribute__ ((unused))const char* name);
 
 void gr_blit(GRSurface* source, int sx, int sy, int w, int h, int dx, int dy);
 unsigned int gr_get_width(GRSurface* surface);
@@ -86,6 +87,8 @@ int ev_get_epollfd();
 // Resources
 //
 
+bool matches_locale(const char* prefix, const char* locale);
+
 // res_create_*_surface() functions return 0 if no error, else
 // negative.
 //
@@ -103,8 +106,10 @@ int res_create_display_surface(const char* name, GRSurface** pSurface);
 // should have a 'Frames' text chunk whose value is the number of
 // frames this image represents.  The pixel data itself is interlaced
 // by row.
-int res_create_multi_display_surface(const char* name,
-                                     int* frames, GRSurface*** pSurface);
+int res_create_multi_display_surface(const char* name, int* frames,
+                                     int* fps, GRSurface*** pSurface);
+int res_create_multi_display_surface(const char* name, int* frames,
+                                     GRSurface*** pSurface);
 
 // Load a single alpha surface from a grayscale PNG image.
 int res_create_alpha_surface(const char* name, GRSurface** pSurface);
